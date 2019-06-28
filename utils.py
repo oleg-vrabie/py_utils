@@ -1,14 +1,4 @@
-import io
-from google.colab import drive
-import tensorflow as tf
-import matplotlib.pyplot as plt
 import numpy as np
-import random
-from sklearn.model_selection import train_test_split
-from collections import Counter
-import datetime
-from google.colab import files
-from keras.utils import to_categorical
 
 def cut_by_size_in2_classes(a_waves, b_waves, wave_size):
     # Cut waves from raw a- and b_waves pulses of wave_size and label them
@@ -16,6 +6,9 @@ def cut_by_size_in2_classes(a_waves, b_waves, wave_size):
     nr_yb = len(yb)//wave_size
 
     nr_waves = nr_ya + nr_yb
+
+    waves = np.zeros((nr_waves, wave_size))
+    labels = np.zeros((nr_waves,), dtype=int)
 
     for i in range(nr_waves):
         start = i*wave_size
@@ -38,11 +31,14 @@ def cut_by_size_in2_classes(a_waves, b_waves, wave_size):
 
 def cut_by_size_in3_classes(a_waves, b_waves, i_waves, wave_size):
     # Cut waves from raw a- and b_waves pulses of wave_size and label them
-    nr_ya = len(ya)//wave_size
-    nr_yb = len(yb)//wave_size
-    nr_yi = len(yi)//wave_size
+    nr_a = len(ya)//wave_size
+    nr_b = len(yb)//wave_size
+    nr_i = len(yi)//wave_size
 
     nr_waves = nr_ya + nr_yb + nr_yi
+
+    waves = np.zeros((nr_waves, wave_size))
+    labels = np.zeros((nr_waves,), dtype=int)
 
     for i in range(nr_waves):
         start = i*wave_size
@@ -80,10 +76,11 @@ def create_dataset(a_waves=None, b_waves=None, i_waves=None, wave_size=None, use
     nr_a = len(a_waves)//wave_size
     nr_b = len(b_waves)//wave_size
 
-    if i_waves != None:
-        nr_i = len(i_waves)//wave_size
-    else:
+    if i_waves.any() == False:
         nr_i = 0
+    else:
+        nr_i = len(i_waves)//wave_size
+        print('i_present')
 
     nr_waves = nr_a + nr_b + nr_i
     #print('Nr of waves: {}'.format(nr_waves))
@@ -92,7 +89,7 @@ def create_dataset(a_waves=None, b_waves=None, i_waves=None, wave_size=None, use
     labels = np.zeros((nr_waves,), dtype=int)
 
     # Cutting function
-    if if i_waves != None:
+    if i_waves.any() == False:
         waves, labels = cut_by_size_in2_classes(a_waves, b_waves, wave_size)
     else:
         waves, labels = cut_by_size_in3_classes(a_waves, b_waves, i_waves, wave_size)
@@ -108,7 +105,6 @@ def create_dataset(a_waves=None, b_waves=None, i_waves=None, wave_size=None, use
     assert waves.shape[0] == labels.shape[0]
 
     return waves, labels
-
 
 
 # Function used to plot 9 images in a 3x3 grid, and writing the true and
