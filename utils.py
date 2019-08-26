@@ -481,7 +481,49 @@ def cut_by_size_in2_classes(a_waves, b_waves, wave_size):
 
     return waves, labels
 
+# #############################################################################
+# #############################################################################
+def pca_projections(X, n_components):
+    from sklearn.decomposition import PCA as PCA
 
+    pca = PCA(n_components)
+    fitted = pca.fit_transform(X)
+
+    return fitted
+# #############################################################################
+# #############################################################################
+def plot_3d(xs, ys, zs,
+            window_title='New Figure',
+            title='3D plot',
+            xlabel='x',
+            ylabel='y',
+            zlabel='z'):
+
+    fig = plt.figure(num=window_title,figsize=(16,9))
+    fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0, hspace=0.3)
+    ax = fig.add_subplot(111, projection='3d')
+
+    edge='navy'
+    face='none'
+
+    ax.scatter(xs, ys, zs,
+               depthshade=False,
+               edgecolors=edge,
+               facecolors=face,
+               s=60,
+               label='{} elements'.format(xs.shape[0]))
+
+    ax.set_xlabel('PC1')
+    ax.set_ylabel('PC2')
+    ax.set_zlabel('PC3')
+    ax.legend()
+    plt.title('Projection of original data onto first three principal components')
+    plt.show()
+
+    return
+
+# #############################################################################
+# #############################################################################
 def cut_by_size_in3_classes(a_waves, b_waves, i_waves, wave_size):
     # Cut waves from raw a- and b_waves pulses of wave_size and label them
     nr_a = len(a_waves)//wave_size
