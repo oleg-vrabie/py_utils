@@ -48,6 +48,12 @@ def gaussian_mixture_pca_projections(X, waves, n_components, npat, scid, max_ite
 #   max_iter := (int) maximum nr of iterations allowed for GMM fit
 #   bayesian := (bool) 'True' for BayesianGaussianMixture
 # =========================================================================
+# Outputs:
+#   clust_mean_waves := (nr_waves, wave_size) array containing clusters' means
+#   clusters := list of arrays, each comprising individual clusters identified
+#   ns := list of cluster indexes that needed additional_clustering
+#   ks := list of numbers of components that "ns" clusters were splitted into
+# =========================================================================
 
     if bayesian==True:
         print('Fitting BayesianGaussianMixture using {} components\n'.format(n_components))
@@ -79,7 +85,7 @@ def gaussian_mixture_pca_projections(X, waves, n_components, npat, scid, max_ite
     waves_by_cluster = [] # list of clusters with length=n_clusters and
                                 # shape (n_waves_in_cluster, wave_size=780)
 
-    print('\nCollecting centroids and Mahalanobis distances:')
+    print('\nCollecting centroids:')
     for i in range(n_components):
         clust_mean_waves[i] = np.mean(waves[i==gmm.predict(X)], axis=0)
         waves_by_cluster.append(np.asarray(waves[i==gmm.predict(X), :]))
@@ -89,6 +95,7 @@ def gaussian_mixture_pca_projections(X, waves, n_components, npat, scid, max_ite
         cluster_i = np.reshape(clusters_list[i], (clusters_list[i].shape[0] ,3))
         centroids_list.append(gmm.means_[i])
         if with_mahal == True:
+            print('\n\t... and Mahalanobis distances:')
             mahal_list.append(cdist(np.reshape(gmm.means_[i], (1, -1)), cluster_i, metric='mahalanobis'))
 
         # Collecting individual coordinates of points of each cluster
@@ -103,10 +110,10 @@ def gaussian_mixture_pca_projections(X, waves, n_components, npat, scid, max_ite
 
 
 
-    print('\nwaves_by_cluster: {}'.format(waves_by_cluster))
-    print('\nwaves_by_cluster[0].shape: {}'.format(waves_by_cluster[0].shape))
-    print('\nwaves_by_cluster: {}'.format(len(waves_by_cluster[0])))
-    print('\nwaves_by_cluster: {}'.format(len(waves_by_cluster[1])))
+    #print('\nwaves_by_cluster: {}'.format(waves_by_cluster))
+    #print('\nwaves_by_cluster[0].shape: {}'.format(waves_by_cluster[0].shape))
+    #print('\nwaves_by_cluster: {}'.format(len(waves_by_cluster[0])))
+    #print('\nwaves_by_cluster: {}'.format(len(waves_by_cluster[1])))
 
 
 
@@ -206,6 +213,7 @@ def gaussian_mixture_pca_projections(X, waves, n_components, npat, scid, max_ite
                                          xs_list, ys_list, zs_list,
                                          scid, colors)
         clust_mean_waves = np.concatenate((clust_mean_waves, x), axis=0)
+        #clusters.pop(n)   # Remove initial cluster "n"
         clusters.extend(add_clusters)
         ns.append(n)
         ks.append(k)
@@ -220,6 +228,7 @@ def gaussian_mixture_pca_projections(X, waves, n_components, npat, scid, max_ite
             ns.append(n)
             ks.append(k)
             clust_mean_waves = np.concatenate((clust_mean_waves, x), axis=0)
+            #clusters.pop(n)   # Remove initial cluster "n"
             clusters.extend(add_clusters)
             plt.show(block=False)
             plt.pause(0.001)
@@ -374,6 +383,43 @@ def plot_means_of_clusters(n_means, waves, clust_mean_waves, colors=default_colo
     #plt.pause(0.001)
 
     return
+
+# #############################################################################
+# #############################################################################
+
+def plot_means_a4(cluster_means, color='navy', title='Means'):
+    n_means = len(cluster_means)
+    wave_size = cluster_means[0].shape[0]  #780
+
+    # Finding a suitable figure shape
+    if n_means <= 2:
+        side1 = 1
+    else:
+        side1 = n_means//3
+
+    if side1 == 1:
+        top = 0.75
+        bottom = 0.25
+    else:
+        top = None
+        bottom = None
+    side2 = n_means//side1
+
+    if side1*side2 < n_means:
+        side2 += 1
+
+    fig, ax = plt.subplots(num='{} means'.format(n_means), figsize=(16,9))
+    fig.subplots_adjust(left=0.1, right=0.9, top=top, bottom=bottom, hspace=0.245)
+
+    for i in range(n_means):
+        plt.subplot(side1, side2, i+1)
+        plt.plot(np.arange(0, wave_size, 1), cluster_means[i], color=color)
+        plt.title('{}'.format(i+1))
+    plt.suptitle(title)
+    plt.show()
+    #plt.pause(0.001)
+
+    return
 # #############################################################################
 # #############################################################################
 
@@ -483,7 +529,7 @@ def cut_by_size_in2_classes(a_waves, b_waves, wave_size):
 
 # #############################################################################
 # #############################################################################
-def pca_projections(X, n_components):
+def pca_projections(X, n_components, svd_solver='auto'):
     from sklearn.decomposition import PCA as PCA
 
     pca = PCA(n_components)
@@ -518,7 +564,8 @@ def plot_3d(xs, ys, zs,
     ax.set_zlabel('PC3')
     ax.legend()
     plt.title('Projection of original data onto first three principal components')
-    plt.show()
+    #plt.show()
+    plt.show(block=False)
 
     return
 
