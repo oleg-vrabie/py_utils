@@ -563,7 +563,7 @@ def plot_3d(xs, ys, zs,
     ax.set_ylabel('PC2')
     ax.set_zlabel('PC3')
     ax.legend()
-    plt.title('Projection of original data onto first three principal components')
+    plt.title(title)
     #plt.show()
     plt.show(block=False)
 
