@@ -17,6 +17,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cm
+import os       # For getcdw() in plot_means_a4
 # For NMF
 from sklearn.preprocessing import normalize
 from sklearn.decomposition import NMF
@@ -387,39 +388,29 @@ def plot_means_of_clusters(n_means, waves, clust_mean_waves, colors=default_colo
 # #############################################################################
 # #############################################################################
 
-def plot_means_a4(cluster_means, color='navy', title='Means'):
+def plot_means_a4(cluster_means, color='navy', title='Means', path=os.getcwd()):
     n_means = len(cluster_means)
     wave_size = cluster_means[0].shape[0]  #780
+    pwd = path + '/'
 
-    # Finding a suitable figure shape
-    if n_means <= 2:
-        side1 = 1
-    else:
-        side1 = n_means//3
+    side1 = 5   # n rows
+    side2 = 2   # n columns
 
-    if side1 == 1:
-        top = 0.75
-        bottom = 0.25
-    else:
-        top = None
-        bottom = None
-    side2 = n_means//side1
+    top = 0.940
+    bottom = 0.035
 
-    if side1*side2 < n_means:
-        side2 += 1
-
-    fig, ax = plt.subplots(num='{} means'.format(n_means), figsize=(16,9))
-    fig.subplots_adjust(left=0.1, right=0.9, top=top, bottom=bottom, hspace=0.245)
+    fig, ax = plt.subplots(num='{} means'.format(n_means), figsize=(8.27,11.69))
+    fig.subplots_adjust(left=0.1, right=0.9, top=top, bottom=bottom, hspace=0.365)
 
     for i in range(n_means):
         plt.subplot(side1, side2, i+1)
         plt.plot(np.arange(0, wave_size, 1), cluster_means[i], color=color)
         plt.title('{}'.format(i+1))
     plt.suptitle(title)
+    plt.savefig(pwd+str(input('Give a filename to save as pdf: ')))
     plt.show()
-    #plt.pause(0.001)
 
-    return
+    return fig
 # #############################################################################
 # #############################################################################
 
