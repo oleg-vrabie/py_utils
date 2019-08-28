@@ -29,8 +29,8 @@ default_colors = ['navy', 'c', 'cornflowerblue', 'gold', 'dimgray', 'darkorange'
 #                                  Functions
 # #############################################################################
 
-def gaussian_mixture_pca_projections(X, waves, n_components, npat, scid, max_iter=500,
-                                     bayesian=True, full=True, with_mahal=True,
+def gaussian_mixture_pca_projections(X, waves, n_components, npat=None, scid=None, max_iter=500,
+                                     bayesian=True, full=True, with_mahal=False,
                                      additional_clustering=False,
                                      colors=default_colors,
                                      separate_smallest_component=False,
@@ -162,7 +162,7 @@ def gaussian_mixture_pca_projections(X, waves, n_components, npat, scid, max_ite
                    c=colors[i],
                    marker="${}$".format(i+1),
                    depthshade=False,
-                   s=60,
+                   s=1,
                    label='{} elements'.format(xs.shape[0]))
 
     ax.set_xlabel('PC1')
@@ -241,7 +241,7 @@ def gaussian_mixture_pca_projections(X, waves, n_components, npat, scid, max_ite
 # #############################################################################
 # #############################################################################
 def additional_clustering_(clusters_list, waves_by_cluster,
-                          xs_list, ys_list, zs_list, scid, my_colors):
+                          xs_list, ys_list, zs_list, scid, my_colors=default_colors):
     print('\nAdditional clustering')
     gmm_component, k = list(map(int, input('Give the component and the nr of clusters to split in (separated by comma): ')
                                            .split(',')))
@@ -270,7 +270,7 @@ def additional_clustering_(clusters_list, waves_by_cluster,
                                                 n_init=10,
                                                 verbose=1).fit(component)
         sub_colors = model.predict(component).ravel()
-        #print(sub_colors)
+        
         x_centro = model.means_[:, 0]
         y_centro = model.means_[:, 1]
         z_centro = model.means_[:, 2]
@@ -286,7 +286,6 @@ def additional_clustering_(clusters_list, waves_by_cluster,
         print('components_ {}'.format(labels.max()+1))
         #print(labels)
         sub_colors = labels.ravel()
-        #print(sub_colors)
 
     # =========================================================================
     # Plot separate subclusters with different colors
@@ -302,9 +301,9 @@ def additional_clustering_(clusters_list, waves_by_cluster,
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(xs, ys, zs,
                c=sub_colors,
-               cmap=matplotlib.colors.ListedColormap(default_colors),
+               cmap=matplotlib.colors.ListedColormap(default_colors, N=len(np.unique(sub_colors))),
                depthshade=False,
-               s=30)
+               s=1)
     # Add centoids
     if type != 'dbscan':
         ax.scatter(x_centro, y_centro, z_centro,
@@ -333,14 +332,16 @@ def additional_clustering_(clusters_list, waves_by_cluster,
             additional_clusters_list.append(component_waves[i==model.predict(component), :])
             additional_mean_waves[i] = np.mean(component_waves[i==model.predict(component), :], axis=0)
         title = 'Means from the separated component #{} ({})'.format(gmm_component, scid)
-        plot_means_of_clusters(k, component_waves, additional_mean_waves)
+        plot_means_of_clusters(k, component_waves, additional_mean_waves,
+                               colors=np.unique(sub_colors))
     else:
         for i in range(k):
             print(component_waves[i==labels].shape)
             additional_clusters_list.append(component_waves[i==labels, :])
             additional_mean_waves[i] = np.mean(component_waves[i==labels], axis=0)
         title = 'Means from the separated component #{} ({})'.format(gmm_component, scid)
-        plot_means_of_clusters(k, component_waves, additional_mean_waves)
+        plot_means_of_clusters(k, component_waves, additional_mean_waves,
+                               colors=np.unique(sub_colors))
 
     return additional_mean_waves, additional_clusters_list, gmm_component-1, k
 # #############################################################################
@@ -376,8 +377,12 @@ def plot_means_of_clusters(n_means, waves, clust_mean_waves, colors=default_colo
     fig.subplots_adjust(left=0.1, right=0.9, top=top, bottom=bottom, hspace=0.245)
 
     for i in range(n_means):
+        if isinstance(colors[i], str) == True:
+            color = colors[i]
+        else:
+            color = default_colors[colors[i]]
         plt.subplot(side1, side2, i+1)
-        plt.plot(np.arange(0, wave_size, 1), clust_mean_waves[i], color=colors[i])
+        plt.plot(np.arange(0, wave_size, 1), clust_mean_waves[i], color=color)
         plt.title('{}'.format(i+1))
     plt.suptitle(title)
     #plt.show(block=False)
@@ -445,7 +450,7 @@ def plot_separate_clusters(n_clusters, xs_list, ys_list, zs_list, centroids_list
                        facecolors=face,
                        cmap=plt.cm.inferno,
                        depthshade=False,
-                       s=40)
+                       s=1)
         # Add centoids
         ax.scatter(x_centro, y_centro, z_centro,
                    marker="X",
@@ -534,7 +539,8 @@ def plot_3d(xs, ys, zs,
             title='3D plot',
             xlabel='x',
             ylabel='y',
-            zlabel='z'):
+            zlabel='z',
+            s=60):
 
     fig = plt.figure(num=window_title,figsize=(16,9))
     fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0, hspace=0.3)
@@ -547,7 +553,7 @@ def plot_3d(xs, ys, zs,
                depthshade=False,
                edgecolors=edge,
                facecolors=face,
-               s=60,
+               s=s,
                label='{} elements'.format(xs.shape[0]))
 
     ax.set_xlabel('PC1')
@@ -559,6 +565,47 @@ def plot_3d(xs, ys, zs,
     plt.show(block=False)
 
     return
+
+# #############################################################################
+# #############################################################################
+def load_data_from_mat_files(patient_list, scid_list, pwd):
+    # Function to load waves from .mat files patient- and scid-wise
+    # patient_list := list of ints containing the patients' numbers
+    # scid_list := list of strings, i.e. 'nsc', 'scp'
+    # pwd := path to the folder with .mat files
+    import scipy.io
+    for patient_nr in patient_list:
+        for scid in scid_list:
+            print('Patient {} {}'.format(patient_nr, scid))
+            pwd_mat = pwd + 'nfpat' + str(patient_nr) + '.icp.' + scid + 'seg.waves.mat'
+
+            if scid == scid_list[0] and patient_nr == patient_list[0]:
+                if patient_nr == 7:
+                    pwd_mat1 = pwd + 'nfpat' + str(patient_nr) + '.icp.' + scid + 'seg.waves.mat'
+                    pwd_mat2 = pwd + 'nfpat' + str(patient_nr) + '.testicp.' + scid + 'seg.waves.mat'
+                    concatenated_waves = scipy.io.loadmat(pwd_mat1)['waves_mat']
+                    concatenated_waves = np.concatenate((concatenated_waves,
+                                                         scipy.io.loadmat(pwd_mat2)
+                                                         ['waves_mat']),
+                                                         axis = 0)
+                else:
+                    concatenated_waves = scipy.io.loadmat(pwd_mat)['waves_mat']
+            elif patient_nr == 7:
+                pwd_mat1 = pwd + 'nfpat' + str(patient_nr) + '.icp.' + scid + 'seg.waves.mat'
+                pwd_mat2 = pwd + 'nfpat' + str(patient_nr) + '.testicp.' + scid + 'seg.waves.mat'
+                concatenated_waves = np.concatenate((concatenated_waves,
+                                                     scipy.io.loadmat(pwd_mat2)
+                                                     ['waves_mat']),
+                                                     axis = 0)
+                concatenated_waves = np.concatenate((concatenated_waves,
+                                                     scipy.io.loadmat(pwd_mat1)
+                                                     ['waves_mat']),
+                                                     axis = 0)
+            else:
+                concatenated_waves = np.concatenate((concatenated_waves,
+                                                     scipy.io.loadmat(pwd_mat)
+                                                     ['waves_mat']))
+    return concatenated_waves
 
 # #############################################################################
 # #############################################################################
