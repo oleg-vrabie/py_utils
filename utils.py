@@ -252,7 +252,7 @@ def additional_clustering_(clusters_list, waves_by_cluster,
     # =========================================================================
     # Clustering step
     # =========================================================================
-    type = input('k or gmm: ')
+    type = input('k, dbscan or gmm: ')
     if type == 'k':
         model = KMeans(n_clusters=k,
                        n_init=10).fit(component)
@@ -270,7 +270,7 @@ def additional_clustering_(clusters_list, waves_by_cluster,
                                                 n_init=10,
                                                 verbose=1).fit(component)
         sub_colors = model.predict(component).ravel()
-        
+
         x_centro = model.means_[:, 0]
         y_centro = model.means_[:, 1]
         z_centro = model.means_[:, 2]
@@ -278,12 +278,15 @@ def additional_clustering_(clusters_list, waves_by_cluster,
     if type == 'dbscan':
         print('\n\tAttention! Experimental! Error prone!\n')
         #min_cluster_size = int(input('min_cluster_size: '))
+        min_cluster_size = int(input('min_cluster_size: '))
         min_samples = int(input('min_samples: '))
         #model = hdbscan.HDBSCAN(min_cluster_size=min_samples)
-        model = hdbscan.HDBSCAN(min_cluster_size=min_samples).fit(component)
+        model = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size,
+                                min_samples=min_samples).fit(component)
         #labels = model.fit_predict(component)
         labels = model.labels_
         print('components_ {}'.format(labels.max()+1))
+        k = labels.max()+1
         #print(labels)
         sub_colors = labels.ravel()
 
@@ -365,12 +368,13 @@ def plot_means_of_clusters(n_means, waves, clust_mean_waves, colors=default_colo
         side2 += 1
     wave_size = waves.shape[1]  #780
 
+    """
     if n_means > len(colors):
         difference = n_means-len(colors)
         print('\nNote! {} additional (navy) colors were added!'.format(difference))
         for i in range(difference):
             colors.append('navy')
-
+    """
     print('Plottin means of clusters...')
 
     fig, ax = plt.subplots(num='{} means'.format(n_means), figsize=(16,9))
