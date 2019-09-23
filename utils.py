@@ -31,8 +31,10 @@ default_colors = ['navy', 'c', 'cornflowerblue', 'gold', 'dimgray', 'darkorange'
 #                                  Functions
 # #############################################################################
 
-def gaussian_mixture_pca_projections(X, waves, n_components, npat=None, scid=None, max_iter=500,
-                                     bayesian=True, full=True, with_mahal=False,
+def gaussian_mixture_pca_projections(X, waves, n_components,
+                                     npat=None, scid=None, wave_type=None,
+                                     max_iter=500, bayesian=True, full=True,
+                                     with_mahal=False,
                                      additional_clustering=False,
                                      colors=default_colors,
                                      separate_smallest_component=False,
@@ -170,8 +172,8 @@ def gaussian_mixture_pca_projections(X, waves, n_components, npat=None, scid=Non
     ax.set_ylabel('PC2')
     ax.set_zlabel('PC3')
     ax.legend()
-    plt.title('Projection of original {} data onto first three PCs (NFPAT{})'
-              .format(scid, npat))
+    plt.title('Projection of original {}({}) data onto first three PCs (NFPAT{})'
+              .format(wave_type, scid, npat))
 
     # rotate the axes and update
     if rotate == True:
@@ -226,11 +228,11 @@ def gaussian_mixture_pca_projections(X, waves, n_components, npat=None, scid=Non
         plt.pause(0.001)
 
         while input('Still? (yes : True; Enter : False): ')=='yes':
-            x, add_clusters, n, k = additional_clustering_(clusters_list,
-                                             waves_by_cluster,
-                                             index_list,
-                                             xs_list, ys_list, zs_list,
-                                             scid, colors)
+            x, add_clusters, n, k, index_list = additional_clustering_(clusters_list,
+                                                                waves_by_cluster,
+                                                                index_list,
+                                                                xs_list, ys_list, zs_list,
+                                                                scid, colors)
             ns.append(n)
             ks.append(k)
             clust_mean_waves = np.concatenate((clust_mean_waves, x), axis=0)
@@ -262,7 +264,6 @@ def additional_clustering_(clusters_list, waves_by_cluster, index_list,
         model = KMeans(n_clusters=k,
                        n_init=10).fit(component)
         sub_colors = model.labels_.ravel()
-        #print(sub_colors)
         index_list.pop(gmm_component-1)
         index_list.append(sub_colors)
 
@@ -348,6 +349,7 @@ def additional_clustering_(clusters_list, waves_by_cluster, index_list,
     additional_clusters_list = []       # list with waves from additional clusters
 
     if type != 'dbscan':
+        print('\nAdditionally extracted (shapes):')
         for i in range(k):
             print(component_waves[i==model.predict(component), :].shape)
             additional_clusters_list.append(component_waves[i==model.predict(component), :])
@@ -357,6 +359,7 @@ def additional_clustering_(clusters_list, waves_by_cluster, index_list,
         plot_means_of_clusters(k, component_waves, additional_mean_waves,
                                colors=np.unique(sub_colors))
     else:
+        print('\nAdditionally extracted (shapes):')
         for i in range(k):
             print(component_waves[i==labels].shape)
             additional_clusters_list.append(component_waves[i==labels, :])
@@ -611,8 +614,68 @@ def plot_3d(xs, ys, zs,
     plt.title(title)
     #plt.show()
     plt.show(block=False)
+    plt.pause(0.001)
 
     return
+
+# #############################################################################
+# #############################################################################
+def plot_two_by_two(xs1, ys1, zs1,
+                    xs2, ys2, zs2,
+                    values3,
+                    values4,
+                    window_title='', suptitle='',
+                    title1='', title2='', title3='', title4=''):
+    # suptitle, xs1, ys1, zs1, xs2, ys2, zs2,
+    # values3, values4, title1, title2, title3, title4
+    fig = plt.figure(num=window_title, figsize=(16,9))
+    fig.suptitle(suptitle)
+    fig.subplots_adjust(top=0.95,
+                        bottom=0.07,
+                        left=0.07,
+                        right=0.9,
+                        hspace=0.13,
+                        wspace=0.15)
+
+    ax1 = fig.add_subplot(2, 2, 1, projection='3d')
+    ax2 = fig.add_subplot(2, 2, 2, projection='3d')
+    ax3 = fig.add_subplot(2, 2, 3)
+    ax4 = fig.add_subplot(2, 2, 4)
+
+    ax1.set_title(title1)
+    ax2.set_title(title2)
+    ax3.set_title(title3)
+    ax4.set_title(title4)
+
+    ax1.set_xlabel('PC1')
+    ax2.set_xlabel('PC1')
+    ax1.set_ylabel('PC2')
+    ax2.set_ylabel('PC2')
+    ax1.set_zlabel('PC3')
+    ax2.set_zlabel('PC3')
+
+    ax1.scatter(xs1, ys1, zs1,
+               depthshade=False,
+               edgecolors='C0',
+               facecolors='none',
+               s=40,
+               label='{} elements'.format(xs1.shape[0]))
+    ax2.scatter(xs2, ys2, zs2,
+                depthshade=False,
+                edgecolors='C0',
+                facecolors='none',
+                s=40,
+                label='{} elements'.format(xs2.shape[0]))
+    ax3.plot(values3)
+    ax4.plot(values4)
+
+    ax1.legend()
+    ax2.legend()
+
+    plt.show(block=False)
+    plt.pause(0.001)
+    axes = [ax1, ax2, ax3, ax4]
+    return axes
 
 # #############################################################################
 # #############################################################################
