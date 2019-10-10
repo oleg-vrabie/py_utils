@@ -23,17 +23,64 @@ from sklearn.preprocessing import normalize
 from sklearn.decomposition import NMF
 import random
 
-default_colors = ['navy', 'c', 'cornflowerblue', 'gold', 'dimgray', 'darkorange',
-                  'magenta', 'saddlebrown', 'forestgreen', 'turquoise', 'black',
+default_colors = ['dimgray', 'black', 'c',  'navy', 'cornflowerblue', 'gold', 'darkorange',
+                  'magenta', 'saddlebrown', 'forestgreen', 'turquoise',
                   'darkkhaki', 'crimson', 'sienna', 'peru', 'slategray', 'olive']
 
 # #############################################################################
 #                                  Functions
 # #############################################################################
 
+def gaussian_mixture_(X, waves, n_components,
+                     npat=None, scid=None, wave_type=None,
+                     max_iter=500, bayesian=True, full=True,
+                     n_init=10, random_state=None,
+                     colors=default_colors,
+                     rotate=False):
+# =========================================================================
+# Clustering of ICP data projected onto first three principal components,
+# using Gaussian Mixture Models
+#
+# Inputs:
+#   X := (float) aray with shape (nr_waves, 3), containing projections of nr_waves-waves
+#        onto first three principal components
+#   waves := (float) array of shape (nr_waves, wave_size=780), containing single
+#            ICP waves as rows
+#   n_components := (int) nr of components parameter fed into GaussianMixture models
+#                   algorithm, i.e. number of Gaussian components data is factorized into
+#   max_iter := (int) maximum nr of iterations allowed for GMM fit
+#   bayesian := (bool) 'True' for BayesianGaussianMixture
+# =========================================================================
+# Outputs:
+#   clust_mean_waves := (nr_waves, wave_size) array containing clusters' means
+#   clusters := list of arrays, each comprising individual clusters identified
+#   ns := list of cluster indexes that needed additional_clustering
+#   ks := list of numbers of components that "ns" clusters were splitted into
+# =========================================================================
+    if bayesian==True:
+        print('Fitting BayesianGaussianMixture using {} components\n'.format(n_components))
+        gmm = mixture.BayesianGaussianMixture(n_components=n_components,
+                                              covariance_type='full',
+                                              max_iter=max_iter,
+                                              n_init=n_init,
+                                              verbose=1,
+                                              random_state=random_state).fit(X)
+    else:
+        print('Fitting GaussianMixture using {} components\n'.format(n_components))
+        gmm = mixture.GaussianMixture(n_components=n_components,
+                                      covariance_type='full',
+                                      max_iter=max_iter,
+                                      n_init=n_init,
+                                      verbose=1,
+                                      random_state=random_state).fit(X)
+    predictions = gmm.predict(X)
+
+    return gmm
+# #############################################################################
 def gaussian_mixture_pca_projections(X, waves, n_components,
                                      npat=None, scid=None, wave_type=None,
                                      max_iter=500, bayesian=True, full=True,
+                                     n_init=10, random_state=None,
                                      with_mahal=False,
                                      additional_clustering=False,
                                      colors=default_colors,
@@ -64,15 +111,17 @@ def gaussian_mixture_pca_projections(X, waves, n_components,
         gmm = mixture.BayesianGaussianMixture(n_components=n_components,
                                               covariance_type='full',
                                               max_iter=max_iter,
-                                              n_init=10,
-                                              verbose=1).fit(X)
+                                              n_init=n_init,
+                                              verbose=1,
+                                              random_state=random_state).fit(X)
     else:
         print('Fitting GaussianMixture using {} components\n'.format(n_components))
         gmm = mixture.GaussianMixture(n_components=n_components,
                                       covariance_type='full',
                                       max_iter=max_iter,
-                                      n_init=10,
-                                      verbose=1).fit(X)
+                                      n_init=n_init,
+                                      verbose=1,
+                                      random_state=random_state).fit(X)
     # =========================================================================
     # Collecting necessary quantities:
     clusters_list = []      # list of arrays of points belonging to each clusters
@@ -105,7 +154,7 @@ def gaussian_mixture_pca_projections(X, waves, n_components,
                     c=colors[i],
                     marker="${}$".format(i+1),
                     depthshade=False,
-                    s=40,
+                    s=60,
                     label='{} elements'.format(xs.shape[0]))
     ax.set_xlabel('PC1')
     ax.set_ylabel('PC2')
@@ -113,8 +162,8 @@ def gaussian_mixture_pca_projections(X, waves, n_components,
     ax.legend()
     plt.title('Projection of original {}({}) data onto first three PCs (NFPAT{})'
               .format(wave_type, scid, npat))
-    plt.show(block=False)
-    plt.pause(0.001)
+    #plt.show(block=False)
+    #plt.pause(0.001)
 
     if input('Satisfied? (y|N)\n') == 'y':
         print('\nCollecting centroids:')
@@ -298,7 +347,7 @@ def additional_clustering_(clusters_list, waves_by_cluster, index_list,
         model = mixture.BayesianGaussianMixture(n_components=k,
                                                 covariance_type='full',
                                                 max_iter=max_iter,
-                                                n_init=10,
+                                                n_init=5,
                                                 verbose=1).fit(component)
         sub_colors = model.predict(component).ravel()
 
@@ -349,7 +398,7 @@ def additional_clustering_(clusters_list, waves_by_cluster, index_list,
                c=sub_colors,
                cmap=matplotlib.colors.ListedColormap(default_colors, N=len(np.unique(sub_colors))),
                depthshade=False,
-               s=1)
+               s=30)
     # Add centoids
     if type != 'dbscan':
         ax.scatter(x_centro, y_centro, z_centro,
@@ -400,22 +449,36 @@ def additional_clustering_(clusters_list, waves_by_cluster, index_list,
             additional_mean_waves[i] = np.mean(component_waves[i==model.predict(component), :], axis=0)
         title = 'Means from the separated component #{} ({})'.format(gmm_component, scid)
 
-        plot_means_of_clusters(k, component_waves, additional_mean_waves,
+        plot_means_of_clusters(k, additional_mean_waves,
                                colors=np.unique(sub_colors))
     else:
+        labels[labels[:] == -1] = 1000 # for excluding noise points
         print('\nAdditionally extracted (shapes):')
+
         for i in range(k):
             print(component_waves[i==labels].shape)
             additional_clusters_list.append(component_waves[i==labels, :])
             additional_mean_waves[i] = np.mean(component_waves[i==labels], axis=0)
         title = 'Means from the separated component #{} ({})'.format(gmm_component, scid)
 
-        plot_means_of_clusters(k, component_waves, additional_mean_waves,
+        plot_means_of_clusters(k, additional_mean_waves,
                                colors=np.unique(sub_colors))
 
     return additional_mean_waves, additional_clusters_list, gmm_component-1, k, index_list
 
-
+# #############################################################################
+# #############################################################################
+def hdbscan_(X):
+    min_cluster_size = int(input('min_cluster_size: '))
+    min_samples = int(input('min_samples: '))
+    #model = hdbscan.HDBSCAN(min_cluster_size=min_samples)
+    model = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size,
+                            min_samples=min_samples).fit(X)
+    labels = model.labels_
+    print('n_clusters: {}'.format(labels.max()+1))
+    n_clusters = labels.max()+1
+    sub_colors = labels.ravel()
+    return labels, sub_colors, n_clusters
 # #############################################################################
 # #############################################################################
 def cut_by_size_in2_classes(a_waves, b_waves, wave_size):
@@ -462,11 +525,12 @@ def pca_projections(X, n_components, svd_solver='auto'):
 #                               PLOTTING
 # #############################################################################
 # #############################################################################
-def plot_means_of_clusters(n_means, waves, clust_mean_waves, colors=default_colors, title='Means'):
+def plot_means_of_clusters(n_means, clust_mean_waves, wave_size = 780,
+                           colors=default_colors, title='Means'):
     if n_means <= 2:
         side1 = 1
     else:
-        side1 = n_means//3
+        side1 = n_means//3 + 1
 
     if side1 == 1:
         top = 0.75
@@ -478,31 +542,23 @@ def plot_means_of_clusters(n_means, waves, clust_mean_waves, colors=default_colo
 
     if side1*side2 < n_means:
         side2 += 1
-    wave_size = waves.shape[1]  #780
 
-    """
-    if n_means > len(colors):
-        difference = n_means-len(colors)
-        print('\nNote! {} additional (navy) colors were added!'.format(difference))
-        for i in range(difference):
-            colors.append('navy')
-    """
-    print('Plottin means of clusters...')
+    print('\nPlottin means of clusters...')
 
     fig, ax = plt.subplots(num='{} means'.format(n_means), figsize=(16,9))
     fig.subplots_adjust(left=0.1, right=0.9, top=top, bottom=bottom, hspace=0.245)
 
     for i in range(n_means):
-        if isinstance(colors[i], str) == True:
-            color = colors[i]
+        if isinstance(colors[i+1], str) == True: # +1 because the noise is first
+            color = colors[i+1]
         else:
-            color = default_colors[colors[i]]
+            color = default_colors[colors[i+1]]
         plt.subplot(side1, side2, i+1)
         plt.plot(np.arange(0, wave_size, 1), clust_mean_waves[i], color=color)
         plt.title('{}'.format(i+1))
     plt.suptitle(title)
-    #plt.show(block=False)
-    #plt.pause(0.001)
+    plt.show(block=False)
+    plt.pause(0.001)
 
     return
 # #############################################################################
@@ -615,7 +671,7 @@ def plot_separate_clusters(n_clusters, xs_list, ys_list, zs_list, centroids_list
                        facecolors=face,
                        cmap=plt.cm.inferno,
                        depthshade=False,
-                       s=1)
+                       s=30)
         # Add centoids
         ax.scatter(x_centro, y_centro, z_centro,
                    marker="X",
@@ -629,6 +685,41 @@ def plot_separate_clusters(n_clusters, xs_list, ys_list, zs_list, centroids_list
             plt.colorbar(s).set_label('Mahalanobis distance')
         plt.title('Cluster #{}/{} ({} elements)'.format(i+1, n_clusters, xs.shape[0]))
         plt.legend()
+    return
+# #############################################################################
+# #############################################################################
+def stack_plot(xs_list, ys_list, zs_list,
+               label_prefix = 'stack',
+               title = 'Title',
+               s = 20):
+    # Function to plot different classes with different markers and my_colors
+    # in the same figure.
+    # TODO: markers, size as arguments
+
+    fig = plt.figure(num='Projection',figsize=(16,9))
+    fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0, hspace=0.3)
+    ax = fig.add_subplot(111, projection='3d')
+
+    for i in range(len(xs_list)):
+        xs = xs_list[i]
+        ys = ys_list[i]
+        zs = zs_list[i]
+        ax.scatter(xs, ys, zs,
+                    c=default_colors[i+1],
+                    marker="${}$".format(i+1),
+                    depthshade=True,
+                    s=s,
+                    label='{}{} ({})'.format(label_prefix, i+1, xs.shape[0]))
+    ax.set_xlabel('PC1')
+    ax.set_ylabel('PC2')
+    ax.set_zlabel('PC3')
+    ax.legend()
+    plt.title(title)
+    plt.show(block=False)
+    plt.pause(0.001)
+
+    if input('\nSatisfied? (y|N)\n') != 'y':
+        raise Exception('Not satisified :(')
     return
 # #############################################################################
 # #############################################################################
@@ -834,6 +925,21 @@ def load_waves_by_pat_scid(patids, scid, pwd, suffix='.stacked_icp_abp.npy'):
         print(stacked_waves.shape)
         i += 1
     return stacked_waves
+# #############################################################################
+# #############################################################################
+def load_waves(pwd, w_arr = np.zeros((0)), verbose=0):
+    # Loads waves/array from npy file (pwd) into an array.
+    # Depending if the input array (w_arr) is empty or not, the loaded array will be
+    # assigned or concatenated into w_arr
+    if w_arr.shape == (0,):
+        if verbose == 1:
+            print('\nLoad into an {} array ...\n'.format(w_arr.shape))
+        w_arr = np.load(pwd)
+    else:
+        if verbose == 1:print('\nLoad into an {} array ...'.format(w_arr.shape))
+        w_arr = np.concatenate((w_arr, np.load(pwd)))
+
+    return normalize(w_arr, norm='max')
 # #############################################################################
 # #############################################################################
 def acces_waves_by_type(index_list=None, stacked_waves=None, wave_type=None):
