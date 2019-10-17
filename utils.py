@@ -160,7 +160,7 @@ def gaussian_mixture_pca_projections(X, waves, n_components,
     ax.set_ylabel('PC2')
     ax.set_zlabel('PC3')
     ax.legend()
-    plt.title('Projection of original {}({}) data onto first three PCs (NFPAT{})'
+    plt.title('GMM of {}({}) (NFPAT{})'
               .format(wave_type, scid, npat))
     #plt.show(block=False)
     #plt.pause(0.001)
@@ -261,7 +261,7 @@ def gaussian_mixture_pca_projections(X, waves, n_components,
     # =========================================================================
     # Visualize means of clusters = coresponding "types" of waves
     # =========================================================================
-    plot_means_of_clusters(n_components, waves, clust_mean_waves, colors, 'Initial means')
+    plot_means_of_clusters(n_components, clust_mean_waves, title='GMM means')
     #plot_means_of_clusters(n_means, waves, clust_mean_waves, colors, ')
     #plt.draw()
     #plt.show()
@@ -548,13 +548,15 @@ def plot_means_of_clusters(n_means, clust_mean_waves, wave_size = 780,
     fig, ax = plt.subplots(num='{} means'.format(n_means), figsize=(16,9))
     fig.subplots_adjust(left=0.1, right=0.9, top=top, bottom=bottom, hspace=0.245)
 
+    # This loop is to be reviewed!!! (TODO)
     for i in range(n_means):
         if isinstance(colors[i+1], str) == True: # +1 because the noise is first
-            color = colors[i+1]
+            color = colors[i]
         else:
-            color = default_colors[colors[i+1]]
+            color = default_colors[i+1]
         plt.subplot(side1, side2, i+1)
-        plt.plot(np.arange(0, wave_size, 1), clust_mean_waves[i], color=color)
+        #plt.plot(np.arange(0, wave_size, 1), clust_mean_waves[i], color=color)
+        plt.plot(clust_mean_waves[i], color=color)
         plt.title('{}'.format(i+1))
     plt.suptitle(title)
     plt.show(block=False)
@@ -696,7 +698,7 @@ def stack_plot(xs_list, ys_list, zs_list,
     # in the same figure.
     # TODO: markers, size as arguments
 
-    fig = plt.figure(num='Projection',figsize=(16,9))
+    fig = plt.figure(num='stack_plot',figsize=(16,9))
     fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0, hspace=0.3)
     ax = fig.add_subplot(111, projection='3d')
 
